@@ -19,73 +19,143 @@ tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
 
 ## Data Wrangling, Exploration, Visualization
 
-### Name and EID here
+### Abbey Flynn aef2335
 
-#### Introduction 
-
-Paragraph or two introducing your datasets and variables, why they are interesting to you, etc.
-
+### First Data Set
 ```{R}
-# read your datasets in here, e.g., with read_csv()
-
+library(tidyverse)
+library(ggpubr)
+data1 <- diff_express
+data1 <- data1 %>% rownames_to_column(var = "ID")
 ```
+The first data set that I chose to work with is differential gene expression analysis results obtained from comparing the RNAseq data of two different cell populations using DESeq. It contains variables for gene names, mean expression signal across all samples, log2 fold change, adjusted p-value, and a numeric vector specifying whether the gene is expressed or not.
+
+### Second Data Set
+```{R}
+library(GISPA)
+data2 <- as.data.frame(exprset)
+data2 <- t(data2)
+data2 <- as.data.frame(data2)
+data2 <- data2 %>% rownames_to_column(var = "name")
+```
+The second dataset that I chose was one that contains the genome-wide gene expression values from 3 multiple myeloma cancer cell line samples. The variables in this dataset include gene names and 3 sample log2 transformed normalized expression count values.
+
+#### Introduction
+I chose to work with these datasets because I am passionate about genetics. I wanted to answer the question of if a gene was present in both data sets, would that meant that the first data set cells observed could possibly be cancerous myeloma cells. I can hypothesize that cell populations expressing these genes would likely become a multiple myeloma cell.Therefore, this information could be helpful in that it can help take preventative measures to catch myeloma cancer cells early if a cell is found to express this gene. I expect the values with higher sample values to be those that have a gene expressed in the other dataset. I also expect that there will be more genes that are expressed versus not because of the way that I plan to join my data. 
 
 #### Tidying: Reshaping
-
-If your datasets are tidy already, demonstrate that you can reshape data with pivot wider/longer here (e.g., untidy and then retidy). Alternatively, it may be easier to wait until the wrangling section so you can reshape your summary statistics. Note here if you are going to do this.
-
-```{R}
-# your tidying code (if applicable; can also wait until wrangling section)
-```
-
+My data sets were already tidy so I waited until the wrangling section to do so.
     
-#### Joining/Merging
-
+### Joining/Merging
 ```{R}
-# your joining code
-
-# your joining code
+datajoin <- data1 %>% inner_join(data2, by="name")
+datajoin
+nrow(datajoin)
+datajoin %>% summarize_all(n_distinct, na.rm = T)
+datajoin %>% summarize_all(n_distinct)
+anti_join(data1,data2)
+cleandatajoin <- datajoin %>% na.omit
 ```
+I took the data set and decided that it was necessary to do an inner_join. I did this because I wanted to only have the genes that both data sets had in common. I joined by name because it was definitely a constant between two data sets and gene names do not change based on situation. this join gave me a total of 1116 distinct rows. However, I needed to omit the NA values because if there was unknown values this could impact my hypothesis results. I used anti_join to find which genes appear in one dataset and not the other. These genes are most likely not associated with myeloma cancer cells. The final number of genes without the NAs is 867. This is much different than the original dataset1 that had about 36,000 rows and data2 that was about 1,500 rows. This means that the first data set was cut by 35,133 rows and the second data set was cut by 633 rows. That is a lot of information to cute back! Therefore, I think it was a good decision to join them by gene name because it makes the analysis and results much more specific.
 
-Discussions of joining here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+### Merged Data Table
+```{R}
+# Drop the ID column because don't need
+cleandatajoin <- cleandatajoin %>% select(-ID)
+library(knitr)
+cleandatajoin %>% kable(digits = 3, align = 'clccccc', col.names=str_to_title(names(.)))
+cleandatajoin %>% group_by(name) %>% count()
+```
 
 ####  Wrangling
-
 ```{R}
-# your wrangling code
-
-# your wrangling code
-
-# your wrangling code
+#Counting NAs in combined dataset
+function(x) sum(is.na(x))
+all.nas <- function(x) sum(is.na(x))
+datajoin %>% summarize_all(all.nas)
+#I wanted to find the lenght of the longest gene name so I used str_length function. There is only one with greater than or equal to 10 letters and when I test 11 there are 0. This is a long gene name!
+cleandatajoin %>% distinct(name) %>% summarize(sum(str_length(name)>=10))
 ```
 
-Your discussion of wrangling section here. Feel encouraged to break up into more than once code chunk and discuss each in turn.
+### Summary Values
+```{R}
+#This allows for the values to be calculated
+cleandatajoin <- cleandatajoin %>% mutate_if(is.factor, as.numeric)
+cleandatajoin %>% summarize(mean(sample1, na.rm=T))
+cleandatajoin %>% summarize(sd(sample1, na.rm=T))
+cleandatajoin %>% summarize(min(sample1, na.rm=T))
+cleandatajoin %>% summarize(max(sample1, na.rm=T))
+cleandatajoin %>% summarize(n_distinct(sample1, na.rm=T))
+cleandatajoin %>% summarize(min(sample2, na.rm=T))
+cleandatajoin %>% summarize(max(sample2, na.rm=T))
+cleandatajoin %>% summarize(min(sample3, na.rm=T))
+cleandatajoin %>% summarize(max(sample1, na.rm=T))
+cleandatajoin %>% summarize(min(baseMean, na.rm=T))
+cleandatajoin %>% summarize(max(baseMean, na.rm=T))
+```
 
+### Sample 1 to baseMean Ratio
+```{R}
+cleandatajoin2 <- cleandatajoin %>% mutate(sample1tobaseMeanRatio=(mean(sample1, na.rm=T))/baseMean)
+cleandatajoin2
+```
+
+### Avereage Expression of the 3 Myeloma Cell Samples For Each Gene
+```{R}
+cleandatajoin1 <- cleandatajoin %>% pivot_longer(6:8, names_to = "sample") %>% group_by(name) %>% filter(detection_call==1) %>% mutate(SampleMean = mean(value)) %>% arrange(-SampleMean)
+cleandatajoin1
+```
+
+### baseMean Signal Across the Genes
+```{R}
+#Then I looked to see what the baseMean signal across all samples is when the specific gene in question is actually expressed
+cleandatajoin %>% group_by(name) %>% filter(detection_call==1) %>% arrange(-baseMean)
+```
+
+### P-value Evaluation
+```{R}
+cleandatajoin %>% filter(padj>0.05)
+cleandatajoin %>% filter(padj<0.05)
+```
+
+### log2FoldChange Values Across the Genes
+```{R}
+#the log2FoldChange varibale which is a value that indicates how much the gene or transcript's expression seems to have changed between the comparison and control groups. 
+cleandatajoin %>% group_by(name) %>% summarize(log2FoldChange) %>% arrange(log2FoldChange)
+cleandatajoin %>% group_by(name) %>% summarize(log2FoldChange) %>% arrange(-log2FoldChange)
+
+```
+### Wrangling Discussion
+I did quite a bit of Wrangling for this joined data set to really discover if there were any relationships between the experimental cell populations in the first data set and the myeloma cell samples in the second dataset. First, I found statistical information for all of the samples. One thing that I looked at was the mean gene expression in sample 1 myeloma cells divided by the mean expression signal across all samples. This would give us a good idea of how much of the expression out of all the expression comes from sample1. I could hypothesize that those with a higher ratio could be myeloma cells. Another piece of code that I looked at was what the average expression across the 3 myeloma samples is for each gene. This information allows us to conclude that the highest average gene expression out of all 3 of the myeloma cancer cells is MPHOSPH6. The baseMean signal across all samples is when the specific gene in question is actually expressed and the largest one in this case is 18278 and is the STAT1 gene. That is a lot of expression! In the first dataset, I wanted to predict which cell populations were similar to each other enough where you could evaluate them the same way. If the p-value is greater than 0.05, the null hypothesis that the gene expression signal among the two cell populations is equal can be accepted. I also hypothesize that the ones with p-values less than 0.05 are the cells that have different expression patterns among the cell populations. Lastly, I wanted to look at the log2FoldChange variable which is a value that indicates how much the gene or transcript's expression seems to have changed between the comparison and control groups. This can also give us a good idea about which ones could possibly be myeloma cells because genes with a high log2FoldChange are much different from the normal control expression. I found that CAMK2A and CCNA1 have the biggest change between the comparison and control groups and therefore these genes could be considered to give rise to myeloma cells.
 
 #### Visualizing
-
+### Plot 1
 ```{R}
-# your plot 1
+ggplot(data = cleandatajoin1, aes(x = name, y = SampleMean, color=name)) + 
+  ggtitle("Average Expression in Myeloma Cells of 3 Samples for Each Gene") + ylab("Average Expression Across 3 Samples") + xlab("Gene") + geom_point(size=3) + scale_y_continuous(breaks = seq(0,260,15)) + theme(legend.position="none")
 ```
+The ones at the bottom of the average expression I can hypothesize that those genes are less likely to be the cause of the cell becoming a myeloma cell whereas the genes that have a high level of expression I can hypothesize that the high expression of these genes is likely responsible for the cells becoming myeloma cells. I do not have any of the gene names or a legend on the plots because there are so many genes that it overshadows the plot. However, if we wanted to do a much deeper dive into the analysis we could figure out which gene was which from a legend.  
 
-Your discussion of plot 1
-
+### Plot 2
 ```{R}
-# your plot 2
+ggplot(cleandatajoin2, aes(x =name, color=name))+ theme(legend.position="none") + ggtitle("Sample 1 to baseMean Ratio") + ylab("Ratio") + xlab("Gene") + geom_bar(aes(y=sample1tobaseMeanRatio), stat="summary", fun=mean) + scale_y_continuous(name="Ratio", breaks = seq(0,300,20)) + geom_density(alpha=.75)
 ```
+This graph shows that, for sample 1 of the myeloma cells, the ones that are very tall are the genes that have the largest sample1 gene expression to total expression signals. my logic is that if there is a higher ratio of expression in the myeloma cells to total expression signal, those expression signals are most likely to arise as myeloma cells and therefore can be cancerous. We could check this out for sample 2 and 3 as well.
 
-Your discussion of plot 2
-
+### Plot 3
 ```{R}
-# your plot 3
+ggplot(data = cleandatajoin, aes(x = log2FoldChange, y = padj, color = name)) + 
+  ggtitle("p-value vs. log2FoldChange") + ylab("p-value") + xlab("log2FoldChange") + scale_y_continuous(breaks = seq(0,1,.10)) + geom_point(size=3) + geom_smooth(method="lm") + theme(legend.position="none")
 ```
+The higher the p-value the more similar the control and experimental groups are to each other. This makes sense because when the p-value is greater, the null hypothesis that the gene expression among the 2 cell populations is the same. This graph also verifies the assumption that I made when comparing that if there is no difference between the two cell populations these cells are unlikely to be myeloma cells. On the other hand, those that are closer. to 0 and look spread out on the bottom, they are likely to be myeloma cells. In a weird way, this kind of looks like a normal distribution with the peak being normally expressed cells and as you go out you get more and more likely to express genes that give rise myeloma cells. 
 
-Your discussion of plot 3
+### Plot 4
+```{R}
+ggplot(cleandatajoin, aes(detection_call)) +
+  geom_bar(stat="count") 
+```
+I wanted to include this plot because it shows that most of the genes that are in both data sets were not actually expressed. This is a good thing because it means that these are most likely not myeloma cancer cells. On order to become myeloma cells, the gene in both data sets would have to be actually expressed.
 
+### Conclusion
 #### Concluding Remarks
-
-If any!
-
-
-
-
+From this data analysis, I believe that the genes that are common in both data sets, and are expressed in the experimental cell population of dataset1 (a detection_call of 1), have a high probability of being myeloma cells. Those that have a detection_call of 0 are less likely to because there is no expression. The genes that are not in both data sets are highly unlikely to cause myeloma cells to arise.
