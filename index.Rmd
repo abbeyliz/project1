@@ -55,6 +55,7 @@ datajoin %>% summarize_all(n_distinct, na.rm = T)
 datajoin %>% summarize_all(n_distinct)
 anti_join(data1,data2)
 cleandatajoin <- datajoin %>% na.omit
+cleandatajoin
 ```
 I took the data set and decided that it was necessary to do an inner_join. I did this because I wanted to only have the genes that both data sets had in common. I joined by name because it was definitely a constant between two data sets and gene names do not change based on situation. this join gave me a total of 1116 distinct rows. However, I needed to omit the NA values because if there was unknown values this could impact my hypothesis results. I used anti_join to find which genes appear in one dataset and not the other. These genes are most likely not associated with myeloma cancer cells. The final number of genes without the NAs is 867. This is much different than the original dataset1 that had about 36,000 rows and data2 that was about 1,500 rows. This means that the first data set was cut by 35,133 rows and the second data set was cut by 633 rows. That is a lot of information to cute back! Therefore, I think it was a good decision to join them by gene name because it makes the analysis and results much more specific.
 
@@ -97,13 +98,13 @@ cleandatajoin %>% summarize(max(baseMean, na.rm=T))
 ### Sample 1 to baseMean Ratio
 ```{R}
 cleandatajoin2 <- cleandatajoin %>% mutate(sample1tobaseMeanRatio=(mean(sample1, na.rm=T))/baseMean)
-cleandatajoin2
+cleandatajoin2 %>% group_by(name) %>% summarize(sample1tobaseMeanRatio)
 ```
 
 ### Avereage Expression of the 3 Myeloma Cell Samples For Each Gene
 ```{R}
 cleandatajoin1 <- cleandatajoin %>% pivot_longer(6:8, names_to = "sample") %>% group_by(name) %>% filter(detection_call==1) %>% mutate(SampleMean = mean(value)) %>% arrange(-SampleMean)
-cleandatajoin1
+cleandatajoin1 %>% group_by(name) %>% summarize(SampleMean)
 ```
 
 ### baseMean Signal Across the Genes
@@ -123,7 +124,6 @@ cleandatajoin %>% filter(padj<0.05)
 #the log2FoldChange varibale which is a value that indicates how much the gene or transcript's expression seems to have changed between the comparison and control groups. 
 cleandatajoin %>% group_by(name) %>% summarize(log2FoldChange) %>% arrange(log2FoldChange)
 cleandatajoin %>% group_by(name) %>% summarize(log2FoldChange) %>% arrange(-log2FoldChange)
-
 ```
 ### Wrangling Discussion
 I did quite a bit of Wrangling for this joined data set to really discover if there were any relationships between the experimental cell populations in the first data set and the myeloma cell samples in the second dataset. First, I found statistical information for all of the samples. One thing that I looked at was the mean gene expression in sample 1 myeloma cells divided by the mean expression signal across all samples. This would give us a good idea of how much of the expression out of all the expression comes from sample1. I could hypothesize that those with a higher ratio could be myeloma cells. Another piece of code that I looked at was what the average expression across the 3 myeloma samples is for each gene. This information allows us to conclude that the highest average gene expression out of all 3 of the myeloma cancer cells is MPHOSPH6. The baseMean signal across all samples is when the specific gene in question is actually expressed and the largest one in this case is 18278 and is the STAT1 gene. That is a lot of expression! In the first dataset, I wanted to predict which cell populations were similar to each other enough where you could evaluate them the same way. If the p-value is greater than 0.05, the null hypothesis that the gene expression signal among the two cell populations is equal can be accepted. I also hypothesize that the ones with p-values less than 0.05 are the cells that have different expression patterns among the cell populations. Lastly, I wanted to look at the log2FoldChange variable which is a value that indicates how much the gene or transcript's expression seems to have changed between the comparison and control groups. This can also give us a good idea about which ones could possibly be myeloma cells because genes with a high log2FoldChange are much different from the normal control expression. I found that CAMK2A and CCNA1 have the biggest change between the comparison and control groups and therefore these genes could be considered to give rise to myeloma cells.

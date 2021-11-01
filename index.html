@@ -1634,7 +1634,33 @@ datajoin</code></pre>
 ## 15              1
 ## 16              1
 ##  [ reached &#39;max&#39; / getOption(&quot;max.print&quot;) -- omitted 34896 rows ]</code></pre>
-<pre class="r"><code>cleandatajoin &lt;- datajoin %&gt;% na.omit</code></pre>
+<pre class="r"><code>cleandatajoin &lt;- datajoin %&gt;% na.omit
+cleandatajoin</code></pre>
+<pre><code>##                 ID    name    baseMean log2FoldChange         padj
+## 1  ENSG00000000938     FGR 364.7810090     -2.3554014 1.559228e-04
+## 2  ENSG00000003096  KLHL13   1.7727200      0.8016921 6.652744e-01
+## 3  ENSG00000003137 CYP26B1   0.5709002     -0.8262682 6.860985e-01
+## 4  ENSG00000004848     ARX   0.8482145      1.3563951 4.915295e-01
+## 6  ENSG00000006283 CACNA1G   0.6628223     -0.5473495 7.971257e-01
+## 7  ENSG00000006638  TBXA2R   3.5847783     -0.6857608 6.053170e-01
+## 8  ENSG00000006659 LGALS14   1.6913141      3.3677270 4.049181e-02
+## 9  ENSG00000006756    ARSD  38.1117856      1.4122782 2.073680e-02
+## 10 ENSG00000008517    IL32 564.5350320      6.3617515 3.576799e-20
+## 11 ENSG00000010379 SLC6A13   9.9979370      1.3347702 2.197164e-01
+## 12 ENSG00000010704     HFE  88.5035424      2.9415035 2.116633e-12
+##    detection_call   sample1   sample2   sample3
+## 1               1  5.578256  0.000000  2.462804
+## 2               0  7.753511  4.372423  2.957785
+## 3               0  1.540662  0.000000  0.000000
+## 4               0  3.261796  1.882858  1.089647
+## 6               0 0.9669029 0.0000000 0.0000000
+## 7               0  2.750143  1.481320  1.089647
+## 8               0  6.200706  1.882858  2.132462
+## 9               1  7.171887  0.000000  1.089647
+## 10              1 13.343755  3.030008  5.925893
+## 11              0 0.9669029 0.0000000 0.0000000
+## 12              1  4.636103  3.440447  0.000000
+##  [ reached &#39;max&#39; / getOption(&quot;max.print&quot;) -- omitted 856 rows ]</code></pre>
 <p>I took the data set and decided that it was necessary to do an inner_join. I did this because I wanted to only have the genes that both data sets had in common. I joined by name because it was definitely a constant between two data sets and gene names do not change based on situation. this join gave me a total of 1116 distinct rows. However, I needed to omit the NA values because if there was unknown values this could impact my hypothesis results. I used anti_join to find which genes appear in one dataset and not the other. These genes are most likely not associated with myeloma cancer cells. The final number of genes without the NAs is 867. This is much different than the original dataset1 that had about 36,000 rows and data2 that was about 1,500 rows. This means that the first data set was cut by 35,133 rows and the second data set was cut by 633 rows. That is a lot of information to cute back! Therefore, I think it was a good decision to join them by gene name because it makes the analysis and results much more specific.</p>
 </div>
 <div id="merged-data-table" class="section level3">
@@ -11274,53 +11300,42 @@ cleandatajoin %&gt;% summarize(mean(sample1, na.rm = T))</code></pre>
 <h3>Sample 1 to baseMean Ratio</h3>
 <pre class="r"><code>cleandatajoin2 &lt;- cleandatajoin %&gt;% mutate(sample1tobaseMeanRatio = (mean(sample1, 
     na.rm = T))/baseMean)
-cleandatajoin2</code></pre>
-<pre><code>##       name    baseMean log2FoldChange         padj detection_call sample1
-## 1      FGR 364.7810090     -2.3554014 1.559228e-04              1     191
-## 2   KLHL13   1.7727200      0.8016921 6.652744e-01              0     325
-## 3  CYP26B1   0.5709002     -0.8262682 6.860985e-01              0      24
-## 4      ARX   0.8482145      1.3563951 4.915295e-01              0     114
-## 5  CACNA1G   0.6628223     -0.5473495 7.971257e-01              0       8
-## 6   TBXA2R   3.5847783     -0.6857608 6.053170e-01              0     103
-## 7  LGALS14   1.6913141      3.3677270 4.049181e-02              0     225
-## 8     ARSD  38.1117856      1.4122782 2.073680e-02              1     287
-## 9     IL32 564.5350320      6.3617515 3.576799e-20              1      87
-## 10 SLC6A13   9.9979370      1.3347702 2.197164e-01              0       8
-## 11     HFE  88.5035424      2.9415035 2.116633e-12              1     153
-##    sample2 sample3 sample1tobaseMeanRatio
-## 1       47      76              0.3521349
-## 2      116      82             72.4604734
-## 3       47      45            224.9992913
-## 4       70      55            151.4382729
-## 5       48      46            193.7957353
-## 6       64      55             35.8326578
-## 7       70      74             75.9481230
-## 8       47      55              3.3704045
-## 9        8      19              0.2275362
-## 10      48      46             12.8478639
-## 11     100      45              1.4513784
-##  [ reached &#39;max&#39; / getOption(&quot;max.print&quot;) -- omitted 856 rows ]</code></pre>
+cleandatajoin2 %&gt;% group_by(name) %&gt;% summarize(sample1tobaseMeanRatio)</code></pre>
+<pre><code>## # A tibble: 867 x 2
+##    name   sample1tobaseMeanRatio
+##    &lt;chr&gt;                   &lt;dbl&gt;
+##  1 A4GALT                  7.35 
+##  2 ABCA1                   0.139
+##  3 ABCA12                 90.6  
+##  4 ABCA3                   1.38 
+##  5 ABCD2                   0.315
+##  6 ACHE                  125.   
+##  7 ACOT1                   0.872
+##  8 ACOT12                211.   
+##  9 ACPT                   14.4  
+## 10 ACSBG1                  4.76 
+## # … with 857 more rows</code></pre>
 </div>
 <div id="avereage-expression-of-the-3-myeloma-cell-samples-for-each-gene" class="section level3">
 <h3>Avereage Expression of the 3 Myeloma Cell Samples For Each Gene</h3>
 <pre class="r"><code>cleandatajoin1 &lt;- cleandatajoin %&gt;% pivot_longer(6:8, names_to = &quot;sample&quot;) %&gt;% 
     group_by(name) %&gt;% filter(detection_call == 1) %&gt;% mutate(SampleMean = mean(value)) %&gt;% 
     arrange(-SampleMean)
-cleandatajoin1</code></pre>
-<pre><code>## # A tibble: 672 x 8
+cleandatajoin1 %&gt;% group_by(name) %&gt;% summarize(SampleMean)</code></pre>
+<pre><code>## # A tibble: 672 x 2
 ## # Groups:   name [224]
-##    name  baseMean log2FoldChange     padj detection_call sample value SampleMean
-##    &lt;chr&gt;    &lt;dbl&gt;          &lt;dbl&gt;    &lt;dbl&gt;          &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;      &lt;dbl&gt;
-##  1 MPHO…     450.          3.38  1.26e-23              1 sampl…   413       249 
-##  2 MPHO…     450.          3.38  1.26e-23              1 sampl…   184       249 
-##  3 MPHO…     450.          3.38  1.26e-23              1 sampl…   150       249 
-##  4 SPAT…     649.         -1.45  1.23e- 3              1 sampl…   414       249.
-##  5 SPAT…     649.         -1.45  1.23e- 3              1 sampl…   183       249.
-##  6 SPAT…     649.         -1.45  1.23e- 3              1 sampl…   149       249.
-##  7 KLHD…    1057.          0.936 5.48e- 3              1 sampl…   406       245.
-##  8 KLHD…    1057.          0.936 5.48e- 3              1 sampl…   182       245.
-##  9 KLHD…    1057.          0.936 5.48e- 3              1 sampl…   148       245.
-## 10 SUPT…     160.          0.869 3.34e- 2              1 sampl…   417       243.
+##    name  SampleMean
+##    &lt;chr&gt;      &lt;dbl&gt;
+##  1 ABCA1       25.7
+##  2 ABCA1       25.7
+##  3 ABCA1       25.7
+##  4 ABCA3      233. 
+##  5 ABCA3      233. 
+##  6 ABCA3      233. 
+##  7 ABCD2      241. 
+##  8 ABCD2      241. 
+##  9 ABCD2      241. 
+## 10 ACOT1       72.7
 ## # … with 662 more rows</code></pre>
 </div>
 <div id="basemean-signal-across-the-genes" class="section level3">
